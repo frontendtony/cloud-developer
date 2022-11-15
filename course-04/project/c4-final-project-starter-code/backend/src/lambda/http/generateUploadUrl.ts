@@ -3,16 +3,11 @@ import 'source-map-support/register'
 import { APIGatewayProxyEvent, APIGatewayProxyResult } from 'aws-lambda'
 import * as middy from 'middy'
 import { cors, httpErrorHandler } from 'middy/middlewares'
-
-import * as uuid from 'uuid'
-import { generateSignedUrl } from '../../helpers/attachmentUtils'
-import { updateTodoAttachmentUrl } from '../../helpers/todos'
+import { generateUploadUrl } from '../../businessLayer/todos'
 import { createLogger } from '../../utils/logger'
 import { getUserId } from '../utils'
 
-const logger = createLogger('upload')
-
-const bucketName = process.env.ATTACHMENT_S3_BUCKET
+const logger = createLogger('generateUploadUrl')
 
 export const handler = middy(
   async (event: APIGatewayProxyEvent): Promise<APIGatewayProxyResult> => {
@@ -20,13 +15,7 @@ export const handler = middy(
       const todoId = event.pathParameters.todoId
       const userId = getUserId(event)
 
-      const imageId = uuid.v4()
-      const attachmentUrl = `https://${bucketName}.s3.amazonaws.com/${imageId}`
-      const uploadUrl = await generateSignedUrl(imageId)
-
-      logger.info(`Signed url: ${uploadUrl}`)
-
-      await updateTodoAttachmentUrl(attachmentUrl, todoId, userId)
+      const uploadUrl = await generateUploadUrl({ todoId, userId })
 
       return {
         statusCode: 200,
@@ -35,10 +24,11 @@ export const handler = middy(
         })
       }
     } catch (error: any) {
-      logger.error(`Upload failed: ${error.message}`)
+      logger.error(`Failed to generate upload url: ${error.message}`)
+
       return {
         statusCode: 500,
-        body: ''
+        body: `${error.message}`
       }
     }
   }

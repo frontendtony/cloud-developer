@@ -84,7 +84,7 @@ export async function updateTodoAttachmentUrl(
     .promise()
 }
 
-export async function deleteTodo(todoId: string, userId: string) {
+export async function deleteTodoById(todoId: string, userId: string) {
   return await client
     .delete({
       TableName: todosTable,
