@@ -1,17 +1,17 @@
 import { CustomAuthorizerEvent, CustomAuthorizerResult } from 'aws-lambda'
 import 'source-map-support/register'
 
-import Axios from 'axios'
 import { decode, verify } from 'jsonwebtoken'
 import { JwtPayload } from '../../auth/JwtPayload'
 import { createLogger } from '../../utils/logger'
 
-const logger = createLogger('auth')
+const jwksClient = require('jwks-rsa')({
+  jwksUri: 'https://udacity-frontendtony.us.auth0.com/.well-known/jwks.json',
+  requestHeaders: {}, // Optional
+  timeout: 30000 // Defaults to 30s
+})
 
-// to verify JWT token signature.
-// To get this URL you need to go to an Auth0 page -> Show Advanced Settings -> Endpoints -> JSON Web Key Set
-const jwksUrl =
-  'https://udacity-frontendtony.us.auth0.com/.well-known/jwks.json'
+const logger = createLogger('auth')
 
 export const handler = async (
   event: CustomAuthorizerEvent
@@ -55,29 +55,31 @@ export const handler = async (
 
 async function verifyToken(authHeader: string): Promise<JwtPayload> {
   try {
-    // TODO: Implement token verification
-    // You should implement it similarly to how it was implemented for the exercise for the lesson 5
-    // You can read more about how to do this here: https://auth0.com/blog/navigating-rs256-and-jwks/
+    logger.info('Verifying token...')
+
     const token = getToken(authHeader)
+
+    logger.info(`Token retrieved ${token}`)
+
     const jwt = decode(token, { complete: true })
+
+    logger.info(`Token decoded ${JSON.stringify(jwt)}`)
+
     const requestKid = jwt.header.kid
 
-    const res = await Axios.get<{ keys: JwkKey[] }>(jwksUrl)
-    const jwks = res.data.keys
+    const key = await jwksClient.getSigningKey(requestKid)
+    const signingKey = key.getPublicKey()
 
-    const verificationKey = jwks.find(({ kid }) => kid === requestKid)
+    logger.info(`Retrieved signing key ${JSON.stringify(signingKey)}`)
 
-    if (!verificationKey) throw new Error('Invalid verification key')
-
-    const secret = verificationKey.x5c[0]
-
-    return verify(token, secret, { algorithms: ['RS256'] }) as JwtPayload
+    return verify(token, signingKey, { algorithms: ['RS256'] }) as JwtPayload
   } catch (error: any) {
-    logger.error('Failed to authenticate', error)
+    throw new Error(`Failed to verify token, ${error?.message}`)
   }
 }
 
 function getToken(authHeader: string): string {
+  logger.info('Retrieving token...')
   if (!authHeader) throw new Error('No authentication header')
 
   if (!authHeader.toLowerCase().startsWith('bearer '))
@@ -89,13 +91,13 @@ function getToken(authHeader: string): string {
   return token
 }
 
-interface JwkKey {
-  alg: string
-  kty: string
-  use: string
-  n: string
-  e: string
-  kid: string
-  x5t: string
-  x5c: string[]
-}
+// interface JwkKey {
+//   alg: string
+//   kty: string
+//   use: string
+//   n: string
+//   e: string
+//   kid: string
+//   x5t: string
+//   x5c: string[]
+// }
