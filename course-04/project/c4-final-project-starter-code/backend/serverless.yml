@@ -6,6 +6,8 @@ plugins:
   - serverless-webpack
   - serverless-iam-roles-per-function
   - serverless-plugin-tracing
+  - serverless-reqvalidator-plugin
+  - serverless-aws-documentation
 
 provider:
   name: aws
@@ -36,6 +38,20 @@ provider:
             - xray:PutTelemetryRecords
             - xray:PutTraceSegments
           Resource: '*'
+custom:
+  documentation:
+    api:
+      info:
+        version: v1.0.0
+        title: serverless-c4-todo-images-frontendtony api
+        description: Serverless application
+    models:
+      - name: CreateTodoRequest
+        contentType: application/json
+        schema: ${file(models/create-todo-request.json)}
+      - name: UpdateTodoRequest
+        contentType: application/json
+        schema: ${file(models/update-todo-request.json)}
 
 functions:
   Auth:
@@ -66,6 +82,12 @@ functions:
           path: todos
           cors: true
           authorizer: Auth
+          requestValidatorName: RequestValidator
+          documentation:
+            summary: Create a new todo
+            description: Create a new todo
+            requestModels:
+              'application/json': CreateTodoRequest
     iamRoleStatements:
       - Effect: Allow
         Action:
@@ -80,6 +102,12 @@ functions:
           path: todos/{todoId}
           cors: true
           authorizer: Auth
+          requestValidatorName: RequestValidator
+          documentation:
+            summary: Update a todo
+            description: Update a todo
+            requestModels:
+              'application/json': UpdateTodoRequest
     iamRoleStatements:
       - Effect: Allow
         Action:
@@ -137,6 +165,15 @@ resources:
         ResponseType: DEFAULT_4XX
         RestApiId: !Ref RestApi
         StatusCode: '404'
+
+    RequestValidator:
+      Type: 'AWS::ApiGateway::RequestValidator'
+      Properties:
+        Name: 'my-req-validator'
+        RestApiId:
+          Ref: RestApi
+        ValidateRequestBody: true
+        ValidateRequestParameters: false
 
     TodosTable:
       Type: AWS::DynamoDB::Table
