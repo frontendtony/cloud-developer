@@ -2,9 +2,13 @@ import * as AWS from 'aws-sdk'
 import { TodoItem } from '../models/TodoItem'
 import { createLogger } from '../utils/logger'
 
+const AWSXRay = require('aws-xray-sdk')
+
+const XAWS = AWSXRay.captureAWS(AWS)
+
 const todosTable = process.env.TODOS_TABLE
 
-const client = new AWS.DynamoDB.DocumentClient()
+const client = new XAWS.DynamoDB.DocumentClient()
 
 const logger = createLogger('todos')
 
