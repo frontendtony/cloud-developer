@@ -38,6 +38,7 @@ provider:
             - xray:PutTelemetryRecords
             - xray:PutTraceSegments
           Resource: '*'
+
 custom:
   documentation:
     api:
@@ -219,6 +220,7 @@ resources:
               AllowedOrigins:
                 - '*'
               MaxAge: 3000
+
     BucketPolicy:
       Type: AWS::S3::BucketPolicy
       Properties:
